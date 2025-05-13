@@ -3,6 +3,8 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import os
+from utils.data_processor import load_and_process_data
 from components.model_selector import get_model
 from components.model_evaluator import evaluate_model  # 수정된 evaluate_model 가져오기
 from components.model_compare import compare_models
@@ -16,6 +18,10 @@ menu_selection = st.sidebar.selectbox(
     "📌 메뉴를 선택하세요",
     ["모델 비교", "📈 모델 성능 향상 비교"]
 )
+
+# 🔁 X_train.csv 없으면 전처리 먼저 수행
+if not os.path.exists('data/processed/X_train.csv'):
+    load_and_process_data()
 
 # 데이터 로드
 X_train = pd.read_csv('data/processed/X_train.csv')

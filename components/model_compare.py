@@ -44,7 +44,11 @@ def train_tuned_model(X_train, y_train):
     grid_search = GridSearchCV(pipeline, param_grid, cv=3, scoring='accuracy', verbose=1, n_jobs=-1)
     grid_search.fit(X_train, y_train)
 
-    return grid_search.best_estimator_
+    # 튜닝된 모델 이름 명시
+    best_model = grid_search.best_estimator_
+    tuned_model_name = 'RandomForestClassifier'  # 사용된 모델 이름
+
+    return best_model, tuned_model_name
 
 # 모델 평가
 def evaluate_model(model, X_test, y_test):
@@ -66,14 +70,16 @@ def evaluate_model(model, X_test, y_test):
         "confusion_matrix": cm,
         "report": report
     }
+
 # 모델 비교 함수
 def compare_models(X_train, y_train, X_test, y_test):
     base_model = train_base_model(X_train, y_train)
-    tuned_model = train_tuned_model(X_train, y_train)
+    tuned_model, tuned_model_name = train_tuned_model(X_train, y_train)
 
     base_metrics = evaluate_model(base_model, X_test, y_test)
     tuned_metrics = evaluate_model(tuned_model, X_test, y_test)
 
+    # 비교 데이터프레임 생성
     comparison = pd.DataFrame({
         "Metric": ["Accuracy", "Precision", "Recall", "F1 Score"],
         "Base Model": [
@@ -89,8 +95,12 @@ def compare_models(X_train, y_train, X_test, y_test):
             tuned_metrics["f1"]
         ]
     })
+    
     comparison["Improvement (%)"] = (
         (comparison["Tuned Model"] - comparison["Base Model"]) / comparison["Base Model"] * 100
     ).round(2)
+
+    # 모델 이름을 추가하여 반환
+    comparison["Tuned Model Type"] = tuned_model_name
 
     return comparison
