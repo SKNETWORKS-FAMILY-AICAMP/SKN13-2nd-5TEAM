@@ -19,7 +19,7 @@ menu_selection = st.sidebar.selectbox(
     ["모델 비교", "📈 모델 성능 향상 비교"]
 )
 
-# 🔁 X_train.csv 없으면 전처리 먼저 수행
+# 🔁 X_train.csv 없으면 전처리 먼저 수행 
 if not os.path.exists('data/processed/X_train.csv'):
     load_and_process_data()
 
