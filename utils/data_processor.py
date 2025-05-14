@@ -1,58 +1,29 @@
-import pandas as pd
 import os
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import LabelEncoder
+import pandas as pd
 
+def load_fitbit_data(base_path="data/raw/lifesnaps/rais_anonymized/csv_rais_anonymized"):
+    """
+    Lifesnaps Fitbit 데이터 로딩 함수 (daily granularity)
+    :param base_path: CSV 파일들이 있는 디렉토리 경로
+    :return: 일 단위 Fitbit DataFrame
+    """
+    daily_file = os.path.join(base_path, "daily_fitbit_sema_df_unprocessed.csv")
 
-def load_and_process_data():
-    file_path = 'data/raw/healtics_data.csv'
-    df = pd.read_csv(file_path)
+    if not os.path.exists(daily_file):
+        raise FileNotFoundError(f"파일이 존재하지 않음: {daily_file}")
 
-    # 타겟 변수 변환
-    df['churn'] = df['Retention'].map({'Yes': 0, 'No': 1})  # Retention = No → churn(1)
+    df = pd.read_csv(daily_file)
 
-    # 제거할 열 목록
-    drop_cols = [
-        'Date of enrollment', 'Patient ID', 'First Name', 'Last Name', 'Case Assignment Date', 'Week Number', 'COC ID',
-        'Patient Address', 'Patient City', 'Patient State', 'Reason for missing', 'Clinic Location'
-    ]
-    df.drop(columns=[col for col in drop_cols if col in df.columns], inplace=True)
+    # 날짜 형식 변환
+    if 'date' in df.columns:
+        df['date'] = pd.to_datetime(df['date'])
+    else:
+        raise ValueError("데이터에 'date' 컬럼이 없습니다.")
 
-    # 결측치 처리
-    df.fillna(df.mean(numeric_only=True), inplace=True)
+    # 누락된 주요 컬럼 확인
+    required_columns = ['user_id', 'date', 'steps', 'calories', 'heartrate', 'sleep_minutes']
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        print(f"⚠️ 누락된 예상 컬럼: {missing} (분석에 따라 수정 가능)")
 
-    # 범주형 인코딩
-    cat_cols = df.select_dtypes(include='object').columns
-    for col in cat_cols:
-        le = LabelEncoder()
-        df[col] = le.fit_transform(df[col].astype(str))
-
-    # 특성과 타겟 분리
-    X = df.drop(columns=['churn'])
-    y = df['churn']
-
-    # 스케일링
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-
-    # 데이터 분할
-    X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled, y, test_size=0.2, random_state=42, stratify=y
-    )
-
-    # 저장
-    os.makedirs('data/processed', exist_ok=True)
-    X_train_df = pd.DataFrame(X_train, columns=X.columns)
-    X_test_df = pd.DataFrame(X_test, columns=X.columns)
-    X_train_df.to_csv('data/processed/X_train.csv', index=False)
-    X_test_df.to_csv('data/processed/X_test.csv', index=False)
-    y_train.to_frame(name='churn').to_csv('data/processed/y_train.csv', index=False)
-    y_test.to_frame(name='churn').to_csv('data/processed/y_test.csv', index=False)
-
-    print("전처리 끝!")
-    return X_train, X_test, y_train, y_test
-
-
-if __name__ == "__main__":
-    load_and_process_data()
+    return df

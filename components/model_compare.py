@@ -103,7 +103,7 @@ def compare_models(X_train, y_train, X_test, y_test, model_name='XGBoost'):
     else:
         raise ValueError("지원하지 않는 모델입니다.")
 
-    # ✅ RandomizedSearchCV 적용
+    # RandomizedSearchCV 적용
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
     search = RandomizedSearchCV(
         pipeline,

@@ -1,58 +1,75 @@
-import pandas as pd
+# components/model_train.py
 import os
-import joblib
-from xgboost import XGBClassifier
-from sklearn.utils.class_weight import compute_sample_weight
-from imblearn.over_sampling import SMOTE
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import pandas as pd
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
+from imblearn.over_sampling import SMOTE
+from xgboost import XGBClassifier
+import matplotlib.pyplot as plt
+import seaborn as sns
+from utils.data_processor import load_fitbit_data
 
+def train_rf_model(X_train, X_test, y_train, y_test):
+    model = RandomForestClassifier(class_weight='balanced', random_state=42)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
 
-def train_model(method='smote', threshold=0.5, best_params=None):
-    print(f"XGBoost 학습 시작 ({method.upper()} 방식)")
+    report = classification_report(y_test, y_pred, output_dict=True)
+    matrix = confusion_matrix(y_test, y_pred)
+    return model, report, matrix
 
-    # 데이터 로드
-    X_train = pd.read_csv('data/processed/X_train.csv')
-    y_train = pd.read_csv('data/processed/y_train.csv').values.ravel()
-    X_test = pd.read_csv('data/processed/X_test.csv')
-    y_test = pd.read_csv('data/processed/y_test.csv').values.ravel()
-
-    # 모델 정의 (best_params 적용 가능)
-    if best_params is None:
-        model = XGBClassifier(eval_metric='logloss', random_state=42)
+def train_xgb_model_with_smote(df):
+    # user_id, participant_id, id 순서로 컬럼 탐색
+    if "participant_id" in df.columns:
+        id_col = "participant_id"
+    elif "user_id" in df.columns:
+        id_col = "user_id"
+    elif "id" in df.columns:
+        id_col = "id"
     else:
-        model = XGBClassifier(**best_params, eval_metric='logloss', random_state=42)
+        raise KeyError("user_id, participant_id 또는 id 컬럼이 없습니다.")
 
-    if method == 'smote':
-        print("🔁 SMOTE 오버샘플링 적용")
-        smote = SMOTE(random_state=42)
-        X_resampled, y_resampled = smote.fit_resample(X_train, y_train)
-        model.fit(X_resampled, y_resampled)
+    # 이탈자 정의: 마지막 활동일이 기준일보다 7일 이상 전이면 CHURNED=1
+    last_active = df.groupby(id_col)["date"].max().reset_index()
+    cutoff = df["date"].max() - pd.Timedelta(days=7)
+    last_active["CHURNED"] = last_active["date"] < cutoff
+    df = df.merge(last_active[[id_col, "CHURNED"]], on=id_col)
 
-    elif method == 'weight':
-        print("⚖️ 클래스 가중치 조정 적용")
-        sample_weights = compute_sample_weight(class_weight='balanced', y=y_train)
-        model.fit(X_train, y_train, sample_weight=sample_weights)
+    # 존재하는 컬럼 기준으로 동적 피처 추출
+    candidate_features = ["steps", "calories", "sleep_minutes", "heartrate"]
+    features = [col for col in candidate_features if col in df.columns]
+    if not features:
+        raise KeyError("분석에 사용할 수 있는 피처 컬럼이 없습니다: steps, calories, sleep_minutes, heartrate 중 최소 하나가 있어야 합니다.")
 
-    else:
-        print("⚙️ 기본 학습 진행")
-        model.fit(X_train, y_train)
+    df_model = df[features + ["CHURNED"]].dropna()
 
-    # 모델 저장
-    os.makedirs('models', exist_ok=True)
-    joblib.dump(model, 'models/churn_model.pkl')
-    print("💾 모델 저장 완료 → models/churn_model.pkl")
+    print(f"총 데이터 수: {len(df_model)}")
+    print(df_model.head())
 
-    # 예측 확률과 threshold 적용
-    y_proba = model.predict_proba(X_test)[:, 1]
-    y_pred = (y_proba >= threshold).astype(int)
+    X = df_model[features]
+    y = df_model["CHURNED"].astype(int)
 
-    # 평가 지표 출력
-    print(f"✅ Threshold   : {threshold}")
-    print(f"✅ Accuracy    : {accuracy_score(y_test, y_pred):.4f}")
-    print(f"✅ Precision   : {precision_score(y_test, y_pred):.4f}")
-    print(f"✅ Recall      : {recall_score(y_test, y_pred):.4f}")
-    print(f"✅ F1 Score    : {f1_score(y_test, y_pred):.4f}")
+    # train/test split + SMOTE
+    X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.3, random_state=42)
+    X_train_res, y_train_res = SMOTE(random_state=42).fit_resample(X_train, y_train)
 
-    return model
+    model = XGBClassifier(use_label_encoder=False, eval_metric="logloss", random_state=42)
+    model.fit(X_train_res, y_train_res)
+    y_pred = model.predict(X_test)
+
+    report = classification_report(y_test, y_pred, output_dict=True)
+    matrix = confusion_matrix(y_test, y_pred)
+
+    return model, report, matrix
+
+def plot_confusion_matrix(matrix, labels=["Not Churned", "Churned"], title="Confusion Matrix"):
+    plt.figure(figsize=(5, 4))
+    sns.heatmap(matrix, annot=True, fmt="d", cmap="Blues",
+                xticklabels=labels, yticklabels=labels)
+    plt.title(title)
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.tight_layout()
+    st = plt.gcf()
+    return st
