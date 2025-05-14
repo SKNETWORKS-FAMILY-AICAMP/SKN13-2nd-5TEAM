@@ -1,64 +1,16 @@
 import pandas as pd
 import xgboost as xgb
-from sklearn.ensemble import RandomForestClassifier
-from imblearn.over_sampling import SMOTE
-from sklearn.model_selection import GridSearchCV
-from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
-from imblearn.pipeline import Pipeline  # 이걸 꼭 써야 함! sklearn 말고!
+from imblearn.pipeline import Pipeline
+from imblearn.over_sampling import SMOTE
 
 
-class SMOTETransformer(BaseEstimator, TransformerMixin):
-    def __init__(self, random_state=42):
-        self.random_state = random_state  # 반드시 속성으로 등록해야 함
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X, y=None):
-        if y is None:
-            raise ValueError("y 값 없음 어디감")
-        smote = SMOTE(random_state=self.random_state)
-        X_res, y_res = smote.fit_resample(X, y)
-        return X_res, y_res
-
-# 기본 모델 훈련 함수 (XGBoost 모델)
-def train_base_model(X_train, y_train):
-    model = xgb.XGBClassifier(use_label_encoder=False, eval_metric='logloss')
-    model.fit(X_train, y_train)
-    return model
-
-
-# 모델 훈련 함수 (튜닝된 모델)
-def train_tuned_model(X_train, y_train):
-    pipeline = Pipeline([
-        ('smote', SMOTE(random_state=42)),  # SMOTE를 파이프라인에 직접 넣음
-        ('model', RandomForestClassifier(random_state=42))
-    ])
-
-    param_grid = {
-        'model__n_estimators': [50, 100, 200],
-        'model__max_depth': [5, 10, 20]
-    }
-
-    grid_search = GridSearchCV(pipeline, param_grid, cv=3, scoring='accuracy', verbose=1, n_jobs=-1)
-    grid_search.fit(X_train, y_train)
-
-    # 튜닝된 모델 이름 명시
-    best_model = grid_search.best_estimator_
-    tuned_model_name = 'RandomForestClassifier'  # 사용된 모델 이름
-
-    return best_model, tuned_model_name
-
-# 모델 평가
 def evaluate_model(model, X_test, y_test):
-    """
-    모델 평가 함수. 모델, X_test, y_test를 받아서 성능을 평가!
-    """
-    # 예측값 생성
     y_pred = model.predict(X_test)
-    
-    # 성능 지표 계산
     cm = confusion_matrix(y_test, y_pred)
     report = classification_report(y_test, y_pred, output_dict=True)
 
@@ -71,15 +23,106 @@ def evaluate_model(model, X_test, y_test):
         "report": report
     }
 
-# 모델 비교 함수
-def compare_models(X_train, y_train, X_test, y_test):
-    base_model = train_base_model(X_train, y_train)
-    tuned_model, tuned_model_name = train_tuned_model(X_train, y_train)
 
+def compare_models(X_train, y_train, X_test, y_test, model_name='XGBoost'):
+    if model_name == 'XGBoost':
+        base_model = xgb.XGBClassifier(eval_metric='logloss', random_state=42)
+        base_model.fit(X_train, y_train)
+
+        pipeline = Pipeline([
+            ('smote', SMOTE(random_state=42)),
+            ('model', xgb.XGBClassifier(eval_metric='logloss', random_state=42))
+        ])
+
+        param_dist = {
+            'model__n_estimators': [100, 200, 300],
+            'model__max_depth': [3, 5, 7],
+            'model__learning_rate': [0.01, 0.05, 0.1],
+            'model__subsample': [0.8, 1.0],
+            'model__colsample_bytree': [0.8, 1.0],
+            'model__gamma': [0, 1],
+            'model__min_child_weight': [1, 3]
+        }
+
+    elif model_name == 'Random Forest':
+        base_model = RandomForestClassifier(random_state=42)
+        base_model.fit(X_train, y_train)
+
+        pipeline = Pipeline([
+            ('smote', SMOTE(random_state=42)),
+            ('model', RandomForestClassifier(random_state=42))
+        ])
+
+        param_dist = {
+            'model__n_estimators': [100, 200],
+            'model__max_depth': [5, 10, 15]
+        }
+
+    elif model_name == 'SVM':
+        base_model = SVC()
+        base_model.fit(X_train, y_train)
+
+        pipeline = Pipeline([
+            ('smote', SMOTE(random_state=42)),
+            ('model', SVC())
+        ])
+
+        param_dist = {
+            'model__C': [0.1, 1, 10],
+            'model__kernel': ['linear', 'rbf']
+        }
+
+    elif model_name == 'Logistic Regression':
+        base_model = LogisticRegression(max_iter=1000)
+        base_model.fit(X_train, y_train)
+
+        pipeline = Pipeline([
+            ('smote', SMOTE(random_state=42)),
+            ('model', LogisticRegression(max_iter=1000))
+        ])
+
+        param_dist = {
+            'model__C': [0.01, 0.1, 1, 10]
+        }
+
+    elif model_name == 'Gradient Boosting':
+        base_model = GradientBoostingClassifier()
+        base_model.fit(X_train, y_train)
+
+        pipeline = Pipeline([
+            ('smote', SMOTE(random_state=42)),
+            ('model', GradientBoostingClassifier())
+        ])
+
+        param_dist = {
+            'model__n_estimators': [100, 200],
+            'model__learning_rate': [0.01, 0.1],
+            'model__max_depth': [3, 5]
+        }
+
+    else:
+        raise ValueError("지원하지 않는 모델입니다.")
+
+    # ✅ RandomizedSearchCV 적용
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    search = RandomizedSearchCV(
+        pipeline,
+        param_distributions=param_dist,
+        n_iter=30,  # 조합 수 조절
+        scoring='f1',
+        n_jobs=-1,
+        cv=cv,
+        verbose=1,
+        random_state=42
+    )
+    search.fit(X_train, y_train)
+    tuned_model = search.best_estimator_
+
+    # 평가
     base_metrics = evaluate_model(base_model, X_test, y_test)
     tuned_metrics = evaluate_model(tuned_model, X_test, y_test)
 
-    # 비교 데이터프레임 생성
+    # 비교
     comparison = pd.DataFrame({
         "Metric": ["Accuracy", "Precision", "Recall", "F1 Score"],
         "Base Model": [
@@ -95,12 +138,10 @@ def compare_models(X_train, y_train, X_test, y_test):
             tuned_metrics["f1"]
         ]
     })
-    
+
     comparison["Improvement (%)"] = (
         (comparison["Tuned Model"] - comparison["Base Model"]) / comparison["Base Model"] * 100
     ).round(2)
-
-    # 모델 이름을 추가하여 반환
-    comparison["Tuned Model Type"] = tuned_model_name
+    comparison["Tuned Model Type"] = model_name
 
     return comparison
