@@ -41,7 +41,13 @@
 ### 2.1 데이터 셋
 
 ### 2.2 기술 스택
-
+| 분류 | 기술 |
+|------|------
+| 언어 | <img src="https://img.shields.io/badge/-python-3776AB?style=for-the-badge&logo=python&logoColor=white">  |
+| 머신러닝 |<img src="https://img.shields.io/badge/-XGBoost-FF6600?style=for-the-badge&logo=XGBoost&logoColor=white"> <img src="https://img.shields.io/badge/scikitlearn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white">|
+| 데이터 분석 | <img src="https://img.shields.io/badge/pandas-150458?style=for-the-badge&logo=pandas&logoColor=white"> <img src="https://img.shields.io/badge/imblearn-000000?style=for-the-badge&logo=imblearn&logoColor=white"> |
+| 데이터 시각화 | <img src="https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=Matplotlib&logoColor=white"> <img src="https://img.shields.io/badge/Seaborn-1f77b4?style=for-the-badge&logo=Seaborn&logoColor=white">|
+| 화면구현 | <img src="https://img.shields.io/badge/streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white">|
 ### 2.3 분석 프로세스
 
   
