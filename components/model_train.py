@@ -34,11 +34,7 @@ def prepare_data(df):
     df_user = df_encoded.groupby(id_col)[final_features].mean().reset_index()
 
     score = 0
-    score += (df_user["steps"] < 6400).astype(int)
-    score += (df_user["calories"] < 1800).astype(int)
-    score += (df_user["very_active_minutes"] < 6).astype(int) * 2
-    score += (df_user["moderately_active_minutes"] < 8).astype(int)
-    score += (df_user["distance"] < 4600).astype(int)
+    
     df_user["CHURNED"] = (score >= 4).astype(int)
 
     churned_df = df_user[df_user["CHURNED"] == 1]
