@@ -14,7 +14,7 @@
 ## 📌 1. 프로젝트 개요
 ### 💁 1.1 프로젝트 소개
 
-### 🔍️ 1.2 주제 선정 배경
+### 📚 1.2 주제 선정 배경
 - 의료 서비스의 패러다임이 ‘치료･공급자’ 중심에서 ‘예방･소비자’ 중심으로 변화하면서 디지털
 헬스케어에 대한 수요가 꾸준히 증가하고 있음.
 
@@ -32,15 +32,15 @@
 
 
 
-### 1.3 프로젝트 목표
+### 🎯 1.3 프로젝트 목표
 - 일반적으로 많은 모바일 서비스 제공 기업은 사용자와의 지속적인 관계를 유지하기 위하여, 그리고 새로운 사용자의 유치를 위하여 높은 마케팅 비용을 지출한다. 모바일 서비스 기업들은 마케팅에 사용되는 비용과 노력을 효율적으로 투입하고자 사용자의 속성을 분석하고 서비스 사용행태를 분석한다.
 - 모바일 헬스 서비스 역시 사용자와의 지속적인 소통을 통해 이탈하지 않도록 할 수 있는 방안을 개발하기 위하여, 사용자 및 사용행태 분석 연구가 필요.
 - 이에 따라 모바일 헬스 서비스 사용자의 지속적 사용에 대한 특성을 분석하고 예측 모델을 개발.
 
-## 2. 데이터 분석 및 전처리
-### 2.1 데이터 셋
+## ⚙ 2. 데이터 분석 및 전처리
+### 💾 2.1 데이터 셋
 
-### 2.2 기술 스택
+### 🛠 2.2 기술 스택
 | 분류 | 기술 |
 |------|------
 | 언어 | <img src="https://img.shields.io/badge/-python-3776AB?style=for-the-badge&logo=python&logoColor=white">  |
@@ -48,22 +48,22 @@
 | 데이터 분석 | <img src="https://img.shields.io/badge/pandas-150458?style=for-the-badge&logo=pandas&logoColor=white"> <img src="https://img.shields.io/badge/imblearn-000000?style=for-the-badge&logo=imblearn&logoColor=white"> |
 | 데이터 시각화 | <img src="https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=Matplotlib&logoColor=white"> <img src="https://img.shields.io/badge/Seaborn-1f77b4?style=for-the-badge&logo=Seaborn&logoColor=white">|
 | 화면구현 | <img src="https://img.shields.io/badge/streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white">|
-### 2.3 분석 프로세스
+### 🔍️ 2.3 분석 프로세스
 
   
-### 2.4 데이터 전처리 결과서 (EDA)
+### 📊 2.4 데이터 전처리 결과서 (EDA)
 
-### 2.5 분석
-
-- 
-### 2.6 모델 성능 비교 및 해석
+### 📝 2.5 분석
 
 
-## 3.시연페이지 
+### 📋 2.6 모델 성능 비교 및 해석
 
 
-## 4. 결론
-### 4.1 기대효과
+## 🖥 3. 시연페이지 
+
+
+## ✅ 4. 결론
+### ✨ 4.1 기대효과
 - 건강 증진 : 공공기관인 보건소에서 진행함에 따라, 헬스케어 앱 이용자들을 기간 종료 이후로도 지속관리하며,
   더 나아가 국민의 건강 증진까지 기대
 - 비용절감 : 현재 국민 의료비 증가에 비해 경제 성장률이 감소하는 추세. 앱을 통해 건강 관리가 가능해짐으로써
@@ -75,4 +75,4 @@
     <img src="./images/목표달성률 시각화.png" width="48%" />
 </div>
 
-## 5. 한 줄 회고
+## 📝 5. 한 줄 회고
