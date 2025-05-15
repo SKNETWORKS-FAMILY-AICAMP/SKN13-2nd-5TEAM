@@ -6,7 +6,6 @@
 | <img src="./image/지우.webp" width="100" height="100"> <br> 최성장 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/GrowingChoi) | <img src="./image/고라.png" width="100" height="100"> <br> 김승호 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/qqqppma) | <img src="./image/알통.png" width="100" height="100"> <br> 박수빈 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/subin0821) | <img src="./image/푸린.png" width="100" height="100"> <br> 최호연 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/oowwixxj819) | 
 </div>
 
-
 <br/>
 
 #### 🗓️ 개발 기간
@@ -44,22 +43,18 @@
 ### 2.2 기술 스택
 
 ### 2.3 분석 프로세스
-- 프로세스 이미지 파일 첨부
+
   
 ### 2.4 데이터 전처리 결과서 (EDA)
-- Feature 셜멍, 데이터 확인, 결측치 확인
-- 
+
 ### 2.5 분석
-- 시각화 자료
+
 - 
 ### 2.6 모델 성능 비교 및 해석
-- 모델 학습 결과서
-- 각각의 모델별 성능 비교 및 최적의 모델 선정 이유.
-- 각각의 항목별 이탈률 비교 (나이대, 성별, BMI..등)
+
 
 ## 3.시연페이지 
-- 최종 모델을 이용해 추론하는 application을 Streamlit을 이용해 구현한 코드 정리.
-- 시각화된 이미지 파일 첨부
+
 
 ## 4. 결론
 ### 4.1 기대효과
