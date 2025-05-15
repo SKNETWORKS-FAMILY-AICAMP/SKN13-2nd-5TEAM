@@ -1,75 +1,144 @@
-# components/model_train.py
-import os
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report, confusion_matrix
-from sklearn.model_selection import train_test_split
-from imblearn.over_sampling import SMOTE
+import numpy as np
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    classification_report, confusion_matrix, precision_recall_curve
+)
+from imblearn.over_sampling import SMOTE, RandomOverSampler
 from xgboost import XGBClassifier
 import matplotlib.pyplot as plt
 import seaborn as sns
-from utils.data_processor import load_fitbit_data
+import streamlit as st
 
-def train_rf_model(X_train, X_test, y_train, y_test):
-    model = RandomForestClassifier(class_weight='balanced', random_state=42)
-    model.fit(X_train, y_train)
-    y_pred = model.predict(X_test)
+# 1. 사용자 기반 데이터 준비 함수
+def prepare_data(df):
+    df["date"] = pd.to_datetime(df["date"])
+    id_col = "user_id" if "user_id" in df.columns else "id"
 
-    report = classification_report(y_test, y_pred, output_dict=True)
-    matrix = confusion_matrix(y_test, y_pred)
-    return model, report, matrix
+    base_cols = ["steps", "calories", "very_active_minutes", "moderately_active_minutes", "distance"]
+    df["age"] = pd.to_numeric(df["age"], errors="coerce")
+
+    df_encoded = df.copy()
+    if "gender" in df.columns:
+        df_encoded = pd.get_dummies(df_encoded, columns=["gender"], drop_first=True)
+    if "age" in df.columns:
+        bins = [0, 19, 29, 39, 49, 59, 69, 120]
+        labels = ['10대 이하', '20대', '30대', '40대', '50대', '60대', '70대 이상']
+        df_encoded["age_group"] = pd.cut(df_encoded["age"], bins=bins, labels=labels)
+        df_encoded = pd.get_dummies(df_encoded, columns=["age_group"], drop_first=True)
+
+    encoded_features = [c for c in df_encoded.columns if c.startswith("gender_") or c.startswith("age_group_")]
+    final_features = [f for f in base_cols + encoded_features if f in df_encoded.columns]
+
+    df_user = df_encoded.groupby(id_col)[final_features].mean().reset_index()
+
+    score = 0
+    score += (df_user["steps"] < 6400).astype(int)
+    score += (df_user["calories"] < 1800).astype(int)
+    score += (df_user["very_active_minutes"] < 6).astype(int) * 2
+    score += (df_user["moderately_active_minutes"] < 8).astype(int)
+    score += (df_user["distance"] < 4600).astype(int)
+    df_user["CHURNED"] = (score >= 4).astype(int)
+
+    churned_df = df_user[df_user["CHURNED"] == 1]
+    nonchurn_df_pool = df_user[df_user["CHURNED"] == 0]
+
+    if len(churned_df) < 2 or len(nonchurn_df_pool) < 2:
+        raise ValueError("CHURNED 또는 비이탈자 샘플 수가 너무 적습니다.")
+
+    if len(nonchurn_df_pool) < len(churned_df):
+        nonchurn_df = nonchurn_df_pool.sample(n=len(churned_df), replace=True, random_state=42)
+    else:
+        nonchurn_df = nonchurn_df_pool.sample(n=len(churned_df), replace=False, random_state=42)
+
+    df_balanced = pd.concat([churned_df, nonchurn_df]).sample(frac=1, random_state=42)
+
+    X = df_balanced.drop(columns=["CHURNED", id_col])
+    y = df_balanced["CHURNED"].astype(int)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.3, random_state=42)
+
+    if y_train.value_counts().min() < 6:
+        sampler = RandomOverSampler(random_state=42)
+    else:
+        sampler = SMOTE(random_state=42)
+
+    X_train_res, y_train_res = sampler.fit_resample(X_train, y_train)
+    return X_train_res, X_test, y_train_res, y_test
+
+# 2. 모델 학습 함수 (Precision 기준 튜닝)
+def train_best_xgb_model(X_train, y_train):
+    param_grid = {
+        "max_depth": [3, 4],
+        "learning_rate": [0.01, 0.05],
+        "n_estimators": [100, 200]
+    }
+
+    grid = GridSearchCV(
+        XGBClassifier(use_label_encoder=False, eval_metric="logloss", random_state=42),
+        param_grid=param_grid,
+        scoring="precision",
+        cv=3,
+        n_jobs=-1
+    )
+    grid.fit(X_train, y_train)
+    return grid.best_estimator_
+
+# 3. 최적 threshold (Precision 우선)
+def find_best_threshold_by_precision(model, X_test, y_test):
+    y_proba = model.predict_proba(X_test)[:, 1]
+    precisions, recalls, thresholds = precision_recall_curve(y_test, y_proba)
+    candidates = [(p, r, t) for p, r, t in zip(precisions, recalls, thresholds) if p >= 0.75]
+    if candidates:
+        best = max(candidates, key=lambda x: x[1])  # recall 최대
+        return best[2], best[0], best[1]
+    else:
+        idx = (precisions * recalls).argmax()
+        return thresholds[idx], precisions[idx], recalls[idx]
+
+# 4. 평가 함수
+
+def evaluate_model(model, X_test, y_test, threshold):
+    y_proba = model.predict_proba(X_test)[:, 1]
+    y_pred = (y_proba >= threshold).astype(int)
+
+    report = {
+        "accuracy": round(accuracy_score(y_test, y_pred), 4),
+        "precision": round(precision_score(y_test, y_pred, zero_division=0), 4),
+        "recall": round(recall_score(y_test, y_pred, zero_division=0), 4),
+        "f1_score": round(f1_score(y_test, y_pred, zero_division=0), 4),
+        "threshold": float(round(threshold, 3))
+    }
+
+    if report["accuracy"] == 1.0 or report["f1_score"] == 1.0:
+        st.warning("⚠️ 모델 성능이 너무 완벽합니다. 데이터 누수나 기준 과단순 가능성 확인 필요!")
+
+    st.caption(f"테스트 샘플 수: {len(y_test)}")
+    st.caption(f"CHURN 분포 (y_test): {y_test.value_counts().to_dict()}")
+    st.caption(f"예측값 분포: {dict(zip(*np.unique(y_pred, return_counts=True)))}")
+
+    return report
+
+# 5. 평가 지표 바 차트
+
+def plot_metrics_bar(report_summary):
+    metrics = ["accuracy", "precision", "recall", "f1_score"]
+    values = [report_summary[m] for m in metrics]
+
+    plt.figure(figsize=(6, 4))
+    sns.barplot(x=metrics, y=values)
+    plt.ylim(0, 1)
+    plt.title("모델 평가 지표")
+    for i, v in enumerate(values):
+        plt.text(i, v + 0.02, str(v), ha='center')
+    st.pyplot(plt)
+
+# 6. 통합 실행
 
 def train_xgb_model_with_smote(df):
-    # user_id, participant_id, id 순서로 컬럼 탐색
-    if "participant_id" in df.columns:
-        id_col = "participant_id"
-    elif "user_id" in df.columns:
-        id_col = "user_id"
-    elif "id" in df.columns:
-        id_col = "id"
-    else:
-        raise KeyError("user_id, participant_id 또는 id 컬럼이 없습니다.")
-
-    # 이탈자 정의: 마지막 활동일이 기준일보다 7일 이상 전이면 CHURNED=1
-    last_active = df.groupby(id_col)["date"].max().reset_index()
-    cutoff = df["date"].max() - pd.Timedelta(days=7)
-    last_active["CHURNED"] = last_active["date"] < cutoff
-    df = df.merge(last_active[[id_col, "CHURNED"]], on=id_col)
-
-    # 존재하는 컬럼 기준으로 동적 피처 추출
-    candidate_features = ["steps", "calories", "sleep_minutes", "heartrate"]
-    features = [col for col in candidate_features if col in df.columns]
-    if not features:
-        raise KeyError("분석에 사용할 수 있는 피처 컬럼이 없습니다: steps, calories, sleep_minutes, heartrate 중 최소 하나가 있어야 합니다.")
-
-    df_model = df[features + ["CHURNED"]].dropna()
-
-    print(f"총 데이터 수: {len(df_model)}")
-    print(df_model.head())
-
-    X = df_model[features]
-    y = df_model["CHURNED"].astype(int)
-
-    # train/test split + SMOTE
-    X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.3, random_state=42)
-    X_train_res, y_train_res = SMOTE(random_state=42).fit_resample(X_train, y_train)
-
-    model = XGBClassifier(use_label_encoder=False, eval_metric="logloss", random_state=42)
-    model.fit(X_train_res, y_train_res)
-    y_pred = model.predict(X_test)
-
-    report = classification_report(y_test, y_pred, output_dict=True)
-    matrix = confusion_matrix(y_test, y_pred)
-
-    return model, report, matrix
-
-def plot_confusion_matrix(matrix, labels=["Not Churned", "Churned"], title="Confusion Matrix"):
-    plt.figure(figsize=(5, 4))
-    sns.heatmap(matrix, annot=True, fmt="d", cmap="Blues",
-                xticklabels=labels, yticklabels=labels)
-    plt.title(title)
-    plt.xlabel("Predicted")
-    plt.ylabel("Actual")
-    plt.tight_layout()
-    st = plt.gcf()
-    return st
+    X_train, X_test, y_train, y_test = prepare_data(df)
+    model = train_best_xgb_model(X_train, y_train)
+    threshold, _, _ = find_best_threshold_by_precision(model, X_test, y_test)
+    report = evaluate_model(model, X_test, y_test, threshold)
+    return model, report, threshold
