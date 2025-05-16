@@ -4,12 +4,23 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
+from sklearn.model_selection import StratifiedKFold
 from xgboost import XGBClassifier
 
 
-# ✅ 데이터 전처리 함수 (이탈 조건 정의)
+# ✅ 교차검증 기반 이탈 확률 함수
+def get_cross_val_probs(X, y, n_splits=5):
+    skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+    probs = np.zeros(len(X))
+
+    for train_idx, val_idx in skf.split(X, y):
+        model = XGBClassifier(use_label_encoder=False, eval_metric="logloss", random_state=42)
+        model.fit(X.iloc[train_idx], y.iloc[train_idx])
+        probs[val_idx] = model.predict_proba(X.iloc[val_idx])[:, 1]
+
+    return probs
+
+# ✅ 이탈 조건 정의 함수
 def prepare_data(df):
     base_cols = ["steps", "calories", "very_active_minutes", "moderately_active_minutes", "distance"]
     df = df.dropna(subset=base_cols + ["id"])
@@ -25,20 +36,14 @@ def prepare_data(df):
 
     return df_user, df_user[base_cols], df_user["CHURNED"]
 
-
-# ✅ 예측 및 시각화 메인 함수
+# ✅ 메인 함수 (교차검증 확률 사용)
 def show_prediction_summary(df):
     st.header("📊 이용자 이탈 예측 결과")
 
     df_user, X, y = prepare_data(df)
 
-    # 모델 학습
-    X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, random_state=42)
-    model = XGBClassifier(use_label_encoder=False, eval_metric="logloss", random_state=42)
-    model.fit(X_train, y_train)
-
-    # 이탈 확률 예측
-    churn_probs = model.predict_proba(X)[:, 1]
+    # ❗ 기존 train_test_split + model 제거하고 교차검증 확률 사용
+    churn_probs = get_cross_val_probs(X, y)
     df_user["churn_prob"] = churn_probs
 
     # 위험군 분류
@@ -46,7 +51,7 @@ def show_prediction_summary(df):
                              bins=[-0.01, 0.3, 0.7, 1.01],
                              labels=["저위험", "중위험", "고위험"])
 
-    # 시각화용 색상 및 라벨
+    # 색상 및 라벨 정의
     color_map = {"고위험": "red", "중위험": "orange", "저위험": "green"}
     label_map = {
         "고위험": "🔴 고위험 이용자\n이탈율 70% 이상",
@@ -54,7 +59,7 @@ def show_prediction_summary(df):
         "저위험": "🟢 저위험 이용자\n이탈율 30% 미만"
     }
 
-    # 🧾 위험군 개수 요약 박스
+    # 🔸 위험군 분포 박스 출력
     st.subheader("📌 위험군 분포")
     cols = st.columns(3)
     for i, level in enumerate(["고위험", "중위험", "저위험"]):
@@ -69,7 +74,7 @@ def show_prediction_summary(df):
                 </div>
             """, unsafe_allow_html=True)
 
-    # ℹ️ 설명 영역
+    # ℹ️ 설명
     st.markdown("### ℹ️ 이탈 확률 계산에 사용된 기준")
     st.info("- 활동량, 칼로리, 거리, 활동 시간 등을 기반으로 XGBoost 모델을 학습\n"
             "- 예측된 이탈 확률을 바탕으로 3단계 위험군으로 분류")
