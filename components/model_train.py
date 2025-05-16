@@ -13,28 +13,24 @@ import streamlit as st
 
 # 1. 사용자 기반 데이터 준비 함수
 def prepare_data(df):
-    df["date"] = pd.to_datetime(df["date"])
-    id_col = "user_id" if "user_id" in df.columns else "id"
+    import numpy as np
+    from sklearn.model_selection import train_test_split
+    from imblearn.over_sampling import SMOTE, RandomOverSampler
 
     base_cols = ["steps", "calories", "very_active_minutes", "moderately_active_minutes", "distance"]
-    df["age"] = pd.to_numeric(df["age"], errors="coerce")
+    df = df.dropna(subset=base_cols + ["id"])
 
-    df_encoded = df.copy()
-    if "gender" in df.columns:
-        df_encoded = pd.get_dummies(df_encoded, columns=["gender"], drop_first=True)
-    if "age" in df.columns:
-        bins = [0, 19, 29, 39, 49, 59, 69, 120]
-        labels = ['10대 이하', '20대', '30대', '40대', '50대', '60대', '70대 이상']
-        df_encoded["age_group"] = pd.cut(df_encoded["age"], bins=bins, labels=labels)
-        df_encoded = pd.get_dummies(df_encoded, columns=["age_group"], drop_first=True)
+    df_user = df.groupby("id")[base_cols].mean().reset_index()
 
-    encoded_features = [c for c in df_encoded.columns if c.startswith("gender_") or c.startswith("age_group_")]
-    final_features = [f for f in base_cols + encoded_features if f in df_encoded.columns]
+    # 🎯 안전한 점수 계산 방식 (Series 기반)
+    score = (
+        (df_user["steps"] < 6400).astype(int) +
+        (df_user["calories"] < 1800).astype(int) +
+        (df_user["very_active_minutes"] < 6).astype(int) * 2 +
+        (df_user["moderately_active_minutes"] < 8).astype(int) +
+        (df_user["distance"] < 4600).astype(int)
+    )
 
-    df_user = df_encoded.groupby(id_col)[final_features].mean().reset_index()
-
-    score = 0
-    
     df_user["CHURNED"] = (score >= 4).astype(int)
 
     churned_df = df_user[df_user["CHURNED"] == 1]
@@ -50,7 +46,7 @@ def prepare_data(df):
 
     df_balanced = pd.concat([churned_df, nonchurn_df]).sample(frac=1, random_state=42)
 
-    X = df_balanced.drop(columns=["CHURNED", id_col])
+    X = df_balanced.drop(columns=["CHURNED", "id"])
     y = df_balanced["CHURNED"].astype(int)
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, stratify=y, test_size=0.3, random_state=42)
@@ -62,6 +58,7 @@ def prepare_data(df):
 
     X_train_res, y_train_res = sampler.fit_resample(X_train, y_train)
     return X_train_res, X_test, y_train_res, y_test
+
 
 # 2. 모델 학습 함수 (Precision 기준 튜닝)
 def train_best_xgb_model(X_train, y_train):
