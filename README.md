@@ -47,6 +47,8 @@
 
 ## ⚙ 2. 데이터 분석 및 전처리
 ### 💾 2.1 데이터 셋
+참고 데이터셋: **FitBit Fitness Tracker Data** <br>
+출처: https://www.kaggle.com/datasets/arashnic/fitbit/data
 
 ### 🛠 2.2 기술 스택
 | 분류 | 기술 |
@@ -164,10 +166,8 @@
 - **라벨링 엔지니어링**: 건강 활동 수준이 낮은 사용자에게 점수를 부여하고, 총 점수가 4점 이상인 경우 CHURNED=1로 설정하여 분류 문제로 전환함.
 - 추가적으로 입력 변수 X, 목표 변수 y로 분리함.
 
-### 📝 2.5 분석
 
-
-### 📋 2.6 모델 성능 비교 및 해석
+### 📋 2.5 모델 성능 비교 및 해석
 **비교한 모델**
 - Logistic Regression
 - Random Forest
