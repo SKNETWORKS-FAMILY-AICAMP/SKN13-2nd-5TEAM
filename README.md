@@ -168,11 +168,45 @@
 
 
 ### 📋 2.6 모델 성능 비교 및 해석
-<div style="display: flex; justify-content: space-between;">
-    <img src="./images/4개 모델 성능 비교.png" width="48%" />
-    <img src="./images/두개모델 성능비교.png" width="47%" />
-</div>
+**비교한 모델**
+- Logistic Regression
+- Random Forest
+- XGBoost
+- SVM
 
+<img src="./images/4개 모델 성능 비교.png" width="80%" />
+
+**모델 분석 결과**
+- 본 프로젝트에서는 4가지 분류 알고리즘(Logistic Regression, Random Forest, XGBoost, SVM)을 적용하여 모델 성능을 비교
+- 성능 평가는 Accuracy, Precision, Recall, F1-score 네 가지 지표를 기준으로 진행
+- Random Forest와 XGBoost는 전반적인 성능에서 가장 우수
+- SVM은 정확도는 높지만 분류 성능은 부적절
+- Recall(민감도)은 모든 모델에서 개선 여지 있음    
+    
+**최종 선택 모델 후보:  Random Forest 또는 XGBoost**
+
+#### 튜닝 후 Random Forest vs XGBoost 성능비교
+
+<img src="./images/두개모델 성능비교.png" width="80%" />
+
+**1. 성능 면에서는 Random Forest가 근소하게 우위**
+- Random Forest는 **정확도(0.9967)**와 **F1 Score(0.9333)**에서 더 높은 수치를 보임
+- 특히 Precision이 1.0으로 완벽한 예측을 보인 반면, XGBoost는 약간 낮은 0.9
+- 하지만 정확도가 지나치게 높고 Precision이 완벽한 점은 과적합 가능성을 의심
+**2. XGBoost는 더 높은 일반화 성능과 실용성 제공**
+- XGBoost는 정규화(L1/L2), 조기 종료, 불균형 클래스 처리 등 다양한 기능으로 실제 데이터에서의 일반화 성능이 더 안정적
+**3. 피처 중요도 해석과 운영 전략 도출에 유리**
+- 두 모델 모두 피처 중요도 시각화가 가능하지만, XGBoost는 SHAP 등의 라이브러리와 연동해 더욱 정교한 해석이 가능
+- 또한 이탈을 유발하는 주요 행동 패턴을 뽑아내어 마케팅 및 사용자 리텐션 전략 수립에 활용하기 적합
+
+**최종 선정 모델 : XG Boost**
+
+#### 최종 모델 튜닝 전 후 비교 데이터
+<img src="./images/최종모델 성능비교.png" width="80%" />
+
+**죄종 모델 선정 이유**
+- Random Forest는 뛰어난 예측 성능을 보였지만, XGBoost는 비슷한 수준의 성능을 유지하면서도, 불균형 데이터 대응력, 일반화 가능성, 모델 해석력, 튜닝 유연성 측면에서 더 우수한 장점을 가지고 있었음.
+- 특히, 실제 사용자 이탈 예측과 같은 민감한 의사결정에는 단순한 Accuracy보다도 재현율(Recall)과 모델의 해석 가능성이 중요하므로, 이를 종합적으로 고려해 XGBoost를 **최종예측모델**로 선정
 
 ## 🖥 3. 시연페이지 
 <img src="./images/시연 페이지1.png" width="100%" /> <br>
