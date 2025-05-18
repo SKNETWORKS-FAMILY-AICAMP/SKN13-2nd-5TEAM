@@ -168,6 +168,10 @@
 
 
 ### 📋 2.6 모델 성능 비교 및 해석
+<div style="display: flex; justify-content: space-between;">
+    <img src="./images/4개 모델 성능 비교.png" width="48%" />
+    <img src="./images/두개모델 성능비교.png" width="47%" />
+</div>
 
 
 ## 🖥 3. 시연페이지 
