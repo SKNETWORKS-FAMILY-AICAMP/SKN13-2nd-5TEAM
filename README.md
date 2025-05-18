@@ -50,6 +50,8 @@
 참고 데이터셋: **FitBit Fitness Tracker Data** <br>
 출처: https://www.kaggle.com/datasets/arashnic/fitbit/data
 
+<img src="./images/데이터 셋.png" width="100%" />
+
 ### 🛠 2.2 기술 스택
 | 분류 | 기술 |
 |------|------
